@@ -3,11 +3,10 @@ package ru.nand.eurekaclientnotifications.services;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
-import ru.nand.events.UserJoinedToGroupEvent;
-import ru.nand.events.UserMessagesEvent;
-import ru.nand.events.UserRegistrationEvent;
-import ru.nand.events.UserLoginEvent;
+import ru.nand.events.*;
 import ru.nand.eurekaclientnotifications.models.Notification;
+
+import java.util.List;
 
 
 @Service
@@ -42,9 +41,36 @@ public class UserEventListener {
     }
 
     @KafkaListener(topics = "user_group_notifications", groupId = "notification-group")
-    public void handleUserGroup(UserJoinedToGroupEvent event){
-        Notification notification = new Notification(event.getUsername(), "User with name " + event.getUsername() + " has joined the group " + event.getGroup());
-        notificationService.save(notification);
-        System.out.println("Received event: " + event.getUsername());
+    public void handleUserGroup(UserJoinedToGroupEvent event) {
+        List<String> usersInGroup = notificationService.getUsersByGroupName(event.getGroup());
+
+        for (String user : usersInGroup) {
+            Notification notification = new Notification(user, "User " + event.getUsername() + " has joined the group " + event.getGroup());
+            notificationService.save(notification);
+        }
+
+        System.out.println("Received UserJoinedToGroupEvent for group: " + event.getGroup());
     }
+
+    @KafkaListener(topics = "group_messages_notifications", groupId = "notification-group")
+    public void handleGroupMessageEvent(UserGroupMessagesEvent event) {
+        String groupName = event.getGroup();
+        String username = event.getSender();
+
+        // Получение всех пользователей группы
+        List<String> groupUsers = notificationService.getUsersByGroupName(groupName);
+
+        // Создание уведомления для каждого пользователя
+        for (String user : groupUsers) {
+            if (!user.equals(username)) {  // исключаем отправителя из списка получателей
+                Notification notification = new Notification(user, "User " + username + " sent a message in group " + groupName);
+                notificationService.save(notification);
+            }
+        }
+        System.out.println("Received group message event for group: " + groupName + " from user: " + username);
+    }
+
+
+
+
 }

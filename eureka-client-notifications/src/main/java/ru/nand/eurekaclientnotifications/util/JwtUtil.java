@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 @Component
@@ -41,11 +43,13 @@ public class JwtUtil {
         return (extractedUsername.equals(username) && !isTokenExpired(token));
     }
 
-    public String generateToken(String username) {
+    public String generateToken() {
+        Map<String, Object> claims = new HashMap<>();
         return Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
+                .setClaims(claims)
+                .setSubject("notification-service")  // Микросервис уведомлений как субъект
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))  // Токен будет действовать 10 часов
                 .signWith(SignatureAlgorithm.HS256, secretKey)
                 .compact();
     }
